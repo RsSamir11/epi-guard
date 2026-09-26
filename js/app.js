@@ -39,7 +39,7 @@ const viewportEl = $('viewport');
 const canvas = $('hitbox');
 const ctx = canvas.getContext('2d');
 
-// detector de rostro para la hitbox
+// inicializa BlazeFace (localiza los rostros en el cuadro)
 async function loadFace() {
     try {
         faceModel = await blazeface.load();
@@ -68,20 +68,20 @@ function drawHitbox(faces) {
         let w = (f.bottomRight[0] - f.topLeft[0]) * scale;
         let h = (f.bottomRight[1] - f.topLeft[1]) * scale;
 
-        // extiende la caja hacia arriba donde va el casco
+        // agranda el recuadro hacia arriba para que cubra la cabeza
         const up = h * 0.85;
         y -= up; h += up;
         const pad = w * 0.18;
         x -= pad; w += pad * 2;
 
-        // el video está espejado, la caja también
+        // como el vídeo va espejado, se voltea el eje horizontal del recuadro
         x = cw - x - w;
 
         ctx.strokeStyle = color;
         ctx.lineWidth = 2;
         ctx.strokeRect(x, y, w, h);
 
-        // esquinas tipo ESP de cheat
+        // refuerza las cuatro esquinas para dar efecto de escáner
         const t = 16;
         ctx.lineWidth = 5;
         ctx.beginPath();
@@ -104,7 +104,7 @@ function drawHitbox(faces) {
     });
 }
 
-// recorta la zona de la cabeza desde el video sin espejar
+// recorta la región de la cabeza (coordenadas originales del vídeo)
 function cropHead(f) {
     const vw = video.videoWidth, vh = video.videoHeight;
     let x = f.topLeft[0], y = f.topLeft[1];
@@ -124,7 +124,7 @@ function cropHead(f) {
     return c;
 }
 
-// clasifica a cada rostro por separado
+// predice la clase de cada rostro detectado
 async function classifyFaces(faces) {
     for (let i = 0; i < faces.length; i++) {
         try {
@@ -144,7 +144,7 @@ async function classifyFaces(faces) {
     return faces;
 }
 
-// veredicto general: manda el peor estado (sin casco > mal puesto > ok)
+// resultado global: gana el estado más crítico (sin casco > mal puesto > ok)
 function overallVerdict(faces) {
     const withV = faces.filter(f => f.verdict);
     if (!withV.length) return { name: null, pct: 0, state: null };
@@ -161,7 +161,7 @@ function overallVerdict(faces) {
     return { name: w.name, pct: w.pct, state: w.state, extra };
 }
 
-// carga el modelo al abrir la página
+// carga tmImage desde /models al abrir la página
 async function loadModel() {
     try {
         model = await window.tmImage.load(
@@ -290,7 +290,7 @@ async function loop() {
     }
 }
 
-// cuenta cambios por persona para las estadísticas
+// acumula los cambios de clase por persona para las métricas
 function trackChanges(faces) {
     const classes = faces.map(f => f.verdict ? f.verdict.name : null);
 
@@ -309,7 +309,7 @@ function trackChanges(faces) {
     prevClasses = classes;
 }
 
-// muestra el veredicto general en el panel
+// actualiza la tarjeta de veredicto y el HUD del visor
 function showVerdict(v, faces) {
     verdict = v;
 
@@ -331,7 +331,7 @@ function showVerdict(v, faces) {
 
     viewport.className = 'viewport ' + ui.cls;
 
-    // barras de la primera persona detectada
+    // reparte las probabilidades de la primera persona detectada
     const primary = faces.find(f => f.verdict && f.verdict.preds);
     if (primary) {
         const out = primary.verdict.preds;
@@ -356,7 +356,7 @@ function showVerdict(v, faces) {
     }
 }
 
-// estado de la clase: ok / warn (mal puesto) / bad (sin casco)
+// traduce el nombre de la clase devuelta por el modelo a un estado interno
 function classState(name) {
     const n = name.toLowerCase().trim();
     if (n.includes('mal')) return 'warn';
