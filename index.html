@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EPI-GUARD · Verificador de casco con IA</title>
+<meta name="description" content="Sistema de clasificación de imágenes con inteligencia artificial para verificar el uso correcto del casco de seguridad en tiempo real">
+<meta name="author" content="Roits Samir Altamirano Martinez">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="css/app.css?v=1">
+</head>
+<body>
+
+<header class="hero">
+    <div class="hero-in">
+        <div class="brand">
+            <div class="brand-badge"><i class="fas fa-hard-hat"></i></div>
+            <div class="brand-txt">
+                <h1>EPI<span>GUARD</span></h1>
+                <p>Clasificación de imágenes con Inteligencia Artificial</p>
+            </div>
+        </div>
+        <div class="hero-meta">
+            <div class="lamp" id="modelStatus" data-state="off">
+                <span class="lamp-dot"></span>
+                <span class="lamp-txt">modelo sin cargar</span>
+            </div>
+            <span class="pill">Tarea 04</span>
+        </div>
+    </div>
+    <div class="hero-glow"></div>
+</header>
+
+<section class="kpis">
+    <div class="kpi kpi-total">
+        <span class="kpi-n" id="statTotal">0</span>
+        <span class="kpi-l">lecturas</span>
+    </div>
+    <div class="kpi kpi-ok">
+        <span class="kpi-n" id="statOk">0</span>
+        <span class="kpi-l">con casco</span>
+    </div>
+    <div class="kpi kpi-warn">
+        <span class="kpi-n" id="statWarn">0</span>
+        <span class="kpi-l">mal puesto</span>
+    </div>
+    <div class="kpi kpi-bad">
+        <span class="kpi-n" id="statBad">0</span>
+        <span class="kpi-l">sin casco</span>
+    </div>
+    <div class="kpi kpi-fps">
+        <span class="kpi-n" id="statFps">0</span>
+        <span class="kpi-l">fps</span>
+    </div>
+</section>
+
+<main class="grid">
+
+    <div class="col-a">
+
+        <section class="card">
+            <div class="card-hd">
+                <h2><i class="fas fa-camera"></i> Detección en vivo</h2>
+                <span class="tag" id="camTag">detenida</span>
+            </div>
+            <div class="card-bd">
+                <div class="viewport" id="viewport">
+                    <video id="video" autoplay muted playsinline></video>
+                    <canvas id="hitbox"></canvas>
+                    <img class="corner-logo" src="img/senati.png" alt="SENATI">
+                    <div class="hud" id="hud">
+                        <span class="hud-name" id="hudName">EN ESPERA</span>
+                        <span class="hud-pct" id="hudPct"></span>
+                    </div>
+                    <span class="bracket tl"></span>
+                    <span class="bracket tr"></span>
+                    <span class="bracket bl"></span>
+                    <span class="bracket br"></span>
+                    <span class="scanline" id="scanline" hidden></span>
+                </div>
+
+                <div class="verdict" id="resultBanner" data-state="idle">
+                    <div class="verdict-icon" id="resultIcon"><i class="fas fa-shield-halved"></i></div>
+                    <div class="verdict-body">
+                        <div class="verdict-title" id="resultTitle">En espera</div>
+                        <div class="verdict-desc" id="resultDesc">Pulsa <strong>Iniciar</strong> para abrir la cámara y comenzar la verificación</div>
+                    </div>
+                </div>
+
+                <div class="toolbar">
+                    <button class="btn btn-go" id="btnStart" disabled>
+                        <i class="fas fa-play"></i> Iniciar cámara
+                    </button>
+                    <button class="btn btn-stop" id="btnStop" disabled>
+                        <i class="fas fa-stop"></i> Detener
+                    </button>
+                    <button class="btn btn-alt" id="btnShot" disabled>
+                        <i class="fas fa-camera-rotate"></i> Capturar
+                    </button>
+                    <button class="btn btn-ghost" id="btnSound" type="button">
+                        <i class="fas fa-volume-up"></i> Sonido activo
+                    </button>
+                    <label class="switch">
+                        <input type="checkbox" id="autoSound" checked>
+                        <span class="switch-track"><span class="switch-knob"></span></span>
+                        alarma automática
+                    </label>
+                </div>
+            </div>
+        </section>
+
+        <section class="card">
+            <div class="card-hd">
+                <h2><i class="fas fa-database"></i> Modelo de clasificación</h2>
+                <span class="tag" id="modelTag">cargando</span>
+            </div>
+            <div class="card-bd">
+                <div class="loader" id="loadModelMsg">
+                    <span class="spinner"></span>
+                    <span>Cargando pesos del modelo entrenado…</span>
+                </div>
+                <p class="ok-msg" id="modelOk" hidden>Modelo listo. Clases entrenadas:</p>
+                <div class="chips" id="classList"></div>
+                <p class="hint">
+                    Entrenado con <b>336 imágenes</b> (112 por clase) en Teachable Machine y exportado a TensorFlow.js.
+                    El detector BlazeFace localiza cada rostro y la zona superior de la cabeza se recorta para clasificarla.
+                </p>
+            </div>
+        </section>
+    </div>
+
+    <div class="col-b">
+
+        <section class="card">
+            <div class="card-hd">
+                <h2><i class="fas fa-chart-simple"></i> Salida del clasificador</h2>
+            </div>
+            <div class="card-bd">
+                <div class="bars" id="predictions">
+                    <p class="empty">Sin datos todavía</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="card">
+            <div class="card-hd">
+                <h2><i class="fas fa-clipboard-list"></i> Registro de lecturas</h2>
+                <button class="link-btn" id="btnClear">limpiar</button>
+            </div>
+            <div class="card-bd tight">
+                <table class="log">
+                    <thead>
+                        <tr><th>Hora</th><th>Clase</th><th>Conf.</th></tr>
+                    </thead>
+                    <tbody id="logBody"></tbody>
+                </table>
+                <p class="empty" id="logEmpty">Aún no hay lecturas registradas</p>
+            </div>
+        </section>
+
+        <section class="card card-info">
+            <div class="card-bd">
+                <h3><i class="fas fa-circle-info"></i> Cómo funciona</h3>
+                <ol class="steps">
+                    <li>El navegador accede a la webcam y toma 3 fotogramas por segundo.</li>
+                    <li>Blazeface detecta los rostros presentes en el cuadro.</li>
+                    <li>La zona de la cabeza se recorta y se envía al modelo entrenado.</li>
+                    <li>Si la clase detectada es <b>sin casco</b> suena la alarma y cambia el estado.</li>
+                </ol>
+            </div>
+        </section>
+    </div>
+
+</main>
+
+<footer class="foot">
+    <div class="foot-in">
+        <div>
+            <strong>EPI-GUARD</strong>
+            <span>Desarrollo y publicación en la nube de un sistema de clasificación de imágenes mediante IA</span>
+        </div>
+        <div class="foot-author">
+            <span>Roits Samir Altamirano Martinez</span>
+            <span class="foot-sub">Ing. Software con Inteligencia Artificial · SENATI</span>
+        </div>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image/dist/teachablemachine-image.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface/dist/blazeface.min.js"></script>
+<script src="js/app.js?v=1"></script>
+</body>
+</html>
